@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animación SVG con Three.js y GSAP</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0e0e0e;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    svg {
+      width: 300px;
+      height: 300px;
+      position: absolute;
+      pointer-events: none;
+      opacity: 0.2; /* Lo dejamos sutil para ver los vectores */
+    }
+  </style>
+  <!-- Cargamos Three.js (necesario para THREE.Vector3) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Cargamos GSAP (necesario para las animaciones y la línea de tiempo) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+  <!-- SVG de ejemplo para que document.querySelector("path") no dé error -->
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path id="miCamino" d="M 10,50 A 40,40 0 1,1 90,50 A 40,40 0 1,1 10,50" fill="none" stroke="#ff0040" stroke-width="2"/>
+  </svg>
+
+  <script>
+    // Inicializamos la línea de tiempo de GSAP (el "tl" que usa tu código)
+    const tl = gsap.timeline();
+
+    // Tu código transcrito:
+    const path = document.querySelector("path");
+    const length = path.getTotalLength();
+    const vertices = [];
+
+    for (let i = 0; i < length; i += 0.1) {
+      const point = path.getPointAtLength(i);
+      const vector = new THREE.Vector3(point.x, -point.y, 0);
+      
+      vector.x += (Math.random() - 0.5) * 30;
+      vector.y += (Math.random() - 0.5) * 30;
+      vector.z += (Math.random() - 0.5) * 70;
+      
+      vertices.push(vector);
+      
+      tl.from(vector, {
+        x: 600 / 2,
+        y: -552 / 2,
+        z: 0,
+        ease: "power2.inOut",
+        duration: "random(2, 5)"
+      },
+      i * 0.002
+      );
+    }
+
+    // Opcional: Imprimimos en consola para que verifiques que se generaron los vectores con éxito
+    console.log("Vectores generados:", vertices.length);
+  </script>
+</body>
+</html>
