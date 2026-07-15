@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Animación de Corazón Compacto</title>
+  <title>Animación de Corazón Responsivo</title>
   <style>
     body {
       margin: 0;
@@ -30,66 +30,75 @@
 </head>
 <body>
 
+  <!-- SVG con el trazo del corazón (usado solo para extraer puntos) -->
   <svg viewBox="0 0 100 100">
     <path id="heart-path" d="M 50,30 C 60,10 90,15 90,45 C 90,70 50,95 50,95 C 50,95 10,70 10,45 C 10,15 40,10 50,30 Z" />
   </svg>
 
   <script>
-    // 1. CONFIGURACIÓN DE LA ESCENA
+    // 1. CONFIGURACIÓN BASE DE THREE.JS
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.z = 150;
+    camera.position.z = 150; // Distancia inicial de la cámara
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimizado para pantallas Retina
     document.body.appendChild(renderer.domElement);
 
-    // 2. EXTRAER PUNTOS DEL SVG
+    const tl = gsap.timeline();
+    const vertices = [];
+    const pointsArray = []; // Array para almacenar THREE.Vector3
+
+    // 2. DETECCIÓN DE PANTALLA MÓVIL Y AJUSTE DE ESCALA
+    // Verificamos si la pantalla es más alta que ancha (vertical/móvil)
+    const isMobile = window.innerWidth < window.innerHeight;
+    // Si es móvil, usamos una escala más pequeña (1.1); si es PC, una más grande (1.7)
+    const scaleFactor = isMobile ? 1.1 : 1.7;
+    
+    // Ajustes de compensación para centrar el dibujo
+    const offsetX = -50 * scaleFactor;
+    const offsetY = 50 * scaleFactor; // Invertimos Y para orientación correcta
+
+    // 3. EXTRACCIÓN DE PUNTOS DEL SVG Y ANIMACIÓN GSAP
     const path = document.querySelector("#heart-path");
     const length = path.getTotalLength();
-    const vertices = [];
 
-    const scaleFactor = 1.8;
-    const offsetX = -50 * scaleFactor;
-    const offsetY = 50 * scaleFactor;
-
-    const tl = gsap.timeline();
-
-    // Reducimos el paso a 0.05 para duplicar los puntos y que el trazo se vea más denso y lleno
+    // Generamos los puntos del corazón
     for (let i = 0; i < length; i += 0.05) {
       const point = path.getPointAtLength(i);
       
+      // Creamos el vector base
       const vector = new THREE.Vector3(
         point.x * scaleFactor + offsetX, 
         -point.y * scaleFactor + offsetY, 
         0
       );
       
-      // CAMBIO CLAVE: Dispersión súper reducida para que las partículas se queden pegadas al borde
+      // Aplicamos dispersión compacta
       vector.x += (Math.random() - 0.5) * 6;
       vector.y += (Math.random() - 0.5) * 6;
       vector.z += (Math.random() - 0.5) * 10;
       
-      vertices.push(vector);
+      pointsArray.push(vector);
 
-      // Animación desde el centro
+      // Animación desde el centro (0,0,0) hacia su posición final
       tl.from(vector, {
         x: 0,
         y: 0,
         z: 0,
         ease: "power2.inOut",
         duration: "random(2, 4.5)"
-      }, i * 0.0015); // Un retraso ligeramente más rápido
+      }, i * 0.0015);
     }
 
-    // 3. CREAR SISTEMA DE PARTÍCULAS
-    const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
+    // 4. CREAR SISTEMA DE PARTÍCULAS VISUALES
+    const geometry = new THREE.BufferGeometry().setFromPoints(pointsArray);
     const pTexture = createCircleTexture();
     
     const material = new THREE.PointsMaterial({
-      color: 0xff3b93, // Rosa intenso mágico
-      size: 1.5,       // Partículas ligeramente más finas y elegantes
+      color: 0xff3b93, // Rosa brillante
+      size: isMobile ? 1.8 : 1.5, // Partículas un pelín más grandes en móvil
       map: pTexture,
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -99,6 +108,7 @@
     const particleSystem = new THREE.Points(geometry, material);
     scene.add(particleSystem);
 
+    // Función para crear textura suave
     function createCircleTexture() {
       const canvas = document.createElement('canvas');
       canvas.width = 16;
@@ -112,14 +122,15 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    // 4. ANIMACIÓN DE RENDERIZADO
+    // 5. BUCLE DE RENDERIZADO Y RESPONSIVIDAD DINÁMICA
     function animate() {
       requestAnimationFrame(animate);
       
-      geometry.setFromPoints(vertices);
+      // Actualizamos los puntos animados
+      geometry.setFromPoints(pointsArray);
       geometry.attributes.position.needsUpdate = true;
       
-      // Rotación en 3D muy suave para apreciar el volumen
+      // Rotación 3D suave
       particleSystem.rotation.y = Math.sin(Date.now() * 0.0004) * 0.12;
       particleSystem.rotation.x = Math.cos(Date.now() * 0.0004) * 0.04;
 
@@ -128,10 +139,21 @@
     
     animate();
 
+    // Actualizar canvas y cámara si se cambia el tamaño o la orientación
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight;
+
+      // Actualizar cámara
+      camera.aspect = newWidth / newHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      // Actualizar renderer
+      renderer.setSize(newWidth, newHeight);
+
+      // (Opcional) Podrías regenerar el corazón aquí para cambiar la escala 
+      // si el usuario gira el teléfono, pero para una carga inicial, la 
+      // detección de `isMobile` al inicio es suficiente.
     });
   </script>
 </body>
